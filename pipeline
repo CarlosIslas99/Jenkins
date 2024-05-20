@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        NODEJS_HOME = tool name: 'node' // Asegúrate de que la herramienta Node.js esté configurada en Jenkins
+        PATH = "${env.NODEJS_HOME}/bin:${env.PATH}"
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main', url: 'https://github.com/tu-usuario/tu-repositorio.git'
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                bat 'npm install'
+            }
+        }
+        
+        stage("Build Docker Image") {
+            steps {
+                script {
+                    docker.build('tu-usuario/nombre-de-la-imagen', '.')
+                }
+            }
+        }
+        
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker_cred', passwordVariable: 'DOCKERHUB_PASSWORD', usernameVariable: 'DOCKERHUB_USERNAME')]) {
+                    bat 'docker login -u %DOCKERHUB_USERNAME% -p %DOCKERHUB_PASSWORD%'
+                    bat 'docker tag tu-usuario/nombre-de-la-imagen tu-usuario/nombre-de-la-imagen'
+                    bat 'docker push tu-usuario/nombre-de-la-imagen'
+                    bat 'docker logout'
+                }
+            }
+        }
+        
+        stage('Run Application') {
+            steps {
+                bat 'docker run -d -p 8000:8000 tu-usuario/nombre-de-la-imagen'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+    }
+}
